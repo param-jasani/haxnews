@@ -1,0 +1,66 @@
+# HaxNews - Cybersecurity Focused Feeds
+# Lower priority number = higher priority
+
+[[feeds]]
+url = "https://www.thehackernews.com/feeds/posts/default"
+name = "The Hacker News"
+priority = 1
+refresh_minutes = 30
+category = "Cybersecurity"
+status = "Active"
+
+[[feeds]]
+url = "https://krebsonsecurity.com/feed/"
+name = "Krebs on Security"
+priority = 2
+refresh_minutes = 60
+category = "Cybersecurity"
+status = "Active"
+
+[[feeds]]
+url = "https://feeds.feedburner.com/eset/blog"
+name = "ESET Research"
+priority = 3
+refresh_minutes = 120
+category = "Cybersecurity"
+status = "Active"
+
+[[feeds]]
+url = "https://www.darkreading.com/rss_simple.asp"
+name = "Dark Reading"
+priority = 4
+refresh_minutes = 45
+category = "Cybersecurity"
+status = "Active"
+
+[[feeds]]
+url = "https://threatpost.com/feed/"
+name = "Threatpost"
+priority = 5
+refresh_minutes = 90
+category = "Cybersecurity"
+status = "Active"
+
+[[feeds]]
+url = "https://www.wired.com/feed/category/security/latest/rss"
+name = "WIRED Security"
+priority = 6
+refresh_minutes = 180
+category = "Cybersecurity"
+status = "Active"
+
+[[feeds]]
+url = "https://www.schneier.com/feed/atom/"
+name = "Bruce Schneier"
+priority = 7
+refresh_minutes = 240
+category = "Cybersecurity"
+status = "Active"
+
+[[feeds]]
+url = "https://www.cyberscoop.com/feed/"
+name = "CyberScoop"
+priority = 8
+refresh_minutes = 60
+category = "Cybersecurity"
+status = "Paused(30)"

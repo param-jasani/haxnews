@@ -1,0 +1,25 @@
+[package]
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+name = "haxnews-cli"
+
+[dependencies]
+haxnews-core = { path = "../haxnews-core" }
+clap = { workspace = true, features = ["cargo"] }
+tokio = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+axum = { workspace = true }
+ratatui = "0.30"
+crossterm = { version = "0.28", features = ["serde"] }
+html2text = "0.11"
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dirs = "5.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+ratatui-image = { version = "11.0.2", default-features = false, features = ["crossterm"] }
+image = "0.25.10"
+reqwest.workspace = true
