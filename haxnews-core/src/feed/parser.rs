@@ -25,7 +25,7 @@ impl FeedParser {
                 .map(|s| s.content.clone())
                 .or_else(|| {
                     entry.content.as_ref().and_then(|c| {
-                        c.body.as_ref().map(|b| b.clone())
+                        c.body.clone()
                     })
                 });
 

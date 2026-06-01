@@ -82,7 +82,7 @@ pub async fn get_items(
     let limit = query.limit;
     let offset = query.offset;
     let search = query.search.as_deref();
-    let category = query.category.as_deref();
+    let _category = query.category.as_deref();
 
     match state.db.get_items(limit, offset, search) {
         Ok(items) => {

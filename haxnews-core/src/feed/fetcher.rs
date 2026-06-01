@@ -6,6 +6,12 @@ pub struct FeedFetcher {
     client: Client,
 }
 
+impl Default for FeedFetcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FeedFetcher {
     pub fn new() -> Self {
         let client = Client::builder()

@@ -78,7 +78,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         .split(size);
 
     // Render Tabs
-    let titles: Vec<Line> = vec!["Dashboard", "News", "Feeds", "Settings"]
+    let titles: Vec<Line> = ["Dashboard", "News", "Feeds", "Settings"]
         .iter()
         .map(|t| Line::from(*t))
         .collect();

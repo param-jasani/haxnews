@@ -87,11 +87,10 @@ impl Repository {
                 let json_str = std::str::from_utf8(value.value())?;
                 let item: NewsItem = serde_json::from_str(json_str)?;
                 
-                if let Some(published) = item.published_at {
-                    if published.timestamp() < cutoff {
+                if let Some(published) = item.published_at
+                    && published.timestamp() < cutoff {
                         to_remove.push(key.value().to_string());
                     }
-                }
             }
 
             for key in to_remove {

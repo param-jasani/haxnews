@@ -254,13 +254,12 @@ impl App {
                         loop {
                             if let Ok(feeds) = db2.get_all_feeds() {
                                 for feed in feeds {
-                                    if let Ok(content) = fetcher.fetch(&feed.url).await {
-                                        if let Ok(items) = haxnews_core::feed::parser::FeedParser::parse(feed.id, &content, &feed.name) {
+                                    if let Ok(content) = fetcher.fetch(&feed.url).await
+                                        && let Ok(items) = haxnews_core::feed::parser::FeedParser::parse(feed.id, &content, &feed.name) {
                                             for item in items {
                                                 let _ = db2.save_item(&item);
                                             }
                                         }
-                                    }
                                 }
                             }
                             tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
@@ -354,18 +353,16 @@ impl App {
     }
 
     pub fn trigger_image_load(&self) {
-        if let Some(item) = self.items.get(self.selected_item) {
-            if let Some(url) = item.image_url.clone() {
+        if let Some(item) = self.items.get(self.selected_item)
+            && let Some(url) = item.image_url.clone() {
                 let tx = self.image_tx.clone();
                 tokio::spawn(async move {
-                    if let Ok(resp) = reqwest::get(&url).await {
-                        if let Ok(bytes) = resp.bytes().await {
+                    if let Ok(resp) = reqwest::get(&url).await
+                        && let Ok(bytes) = resp.bytes().await {
                             let _ = tx.send(bytes.to_vec());
                         }
-                    }
                 });
             }
-        }
     }
 
     pub fn search(&mut self) {

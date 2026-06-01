@@ -4,8 +4,8 @@ use haxnews_core::models::{FeedSource, FeedStatus};
 use anyhow::Result;
 
 pub fn handle_events(app: &mut App) -> Result<()> {
-    if event::poll(std::time::Duration::from_millis(50))? {
-        if let Event::Key(key) = event::read()? {
+    if event::poll(std::time::Duration::from_millis(50))?
+        && let Event::Key(key) = event::read()? {
             if key.kind != crossterm::event::KeyEventKind::Press {
                 return Ok(());
             }
@@ -16,8 +16,8 @@ pub fn handle_events(app: &mut App) -> Result<()> {
                     }
                     KeyCode::Enter => {
                         let minutes = input.parse::<u32>().unwrap_or(60);
-                        if let Some(db) = &app.db {
-                            if let Some(feed) = app.feeds.get_mut(app.selected_feed) {
+                        if let Some(db) = &app.db
+                            && let Some(feed) = app.feeds.get_mut(app.selected_feed) {
                                 let mut updated = feed.clone();
                                 updated.status = FeedStatus::Paused(minutes);
                                 if let Err(err) = db.save_feed(&updated) {
@@ -27,7 +27,6 @@ pub fn handle_events(app: &mut App) -> Result<()> {
                                     app.set_status("Feed paused successfully.");
                                 }
                             }
-                        }
                         app.popup = PopupState::None;
                     }
                     KeyCode::Backspace => {
@@ -136,15 +135,11 @@ pub fn handle_events(app: &mut App) -> Result<()> {
                 Screen::Settings => handle_settings_keys(app, key),
             }
         }
-    }
     Ok(())
 }
 
 fn handle_dashboard_keys(app: &mut App, key: KeyEvent) {
-    match key.code {
-        KeyCode::Char('s') => app.current_screen = Screen::Search,
-        _ => {}
-    }
+    if let KeyCode::Char('s') = key.code { app.current_screen = Screen::Search }
 }
 
 fn handle_news_keys(app: &mut App, key: KeyEvent) {
@@ -219,8 +214,8 @@ fn handle_feeds_keys(app: &mut App, key: KeyEvent) {
             app.popup = PopupState::PauseFeedInput { input: String::from("60") };
         }
         KeyCode::Char('e') => {
-            if let Some(db) = &app.db {
-                if let Some(feed) = app.feeds.get_mut(app.selected_feed) {
+            if let Some(db) = &app.db
+                && let Some(feed) = app.feeds.get_mut(app.selected_feed) {
                     let mut updated = feed.clone();
                     updated.status = FeedStatus::Active;
                     if let Err(err) = db.save_feed(&updated) {
@@ -230,11 +225,10 @@ fn handle_feeds_keys(app: &mut App, key: KeyEvent) {
                         app.set_status("Feed enabled.");
                     }
                 }
-            }
         }
         KeyCode::Char('d') => {
-            if let Some(db) = &app.db {
-                if let Some(feed) = app.feeds.get_mut(app.selected_feed) {
+            if let Some(db) = &app.db
+                && let Some(feed) = app.feeds.get_mut(app.selected_feed) {
                     let mut updated = feed.clone();
                     updated.status = FeedStatus::Disabled;
                     if let Err(err) = db.save_feed(&updated) {
@@ -244,7 +238,6 @@ fn handle_feeds_keys(app: &mut App, key: KeyEvent) {
                         app.set_status("Feed disabled.");
                     }
                 }
-            }
         }
         KeyCode::Char('x') => {
             if let Some(db) = &app.db {

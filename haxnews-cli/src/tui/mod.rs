@@ -59,11 +59,10 @@ pub async fn run_tui() -> Result<()> {
 async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, app: &mut App, picker: &mut ratatui_image::picker::Picker) -> Result<()> {
     loop {
         // Poll for image fetch results
-        if let Ok(img) = app.image_rx.try_recv() {
-            if let Ok(dyn_img) = image::load_from_memory(&img) {
+        if let Ok(img) = app.image_rx.try_recv()
+            && let Ok(dyn_img) = image::load_from_memory(&img) {
                 app.current_image = Some(picker.new_resize_protocol(dyn_img));
             }
-        }
 
 
 

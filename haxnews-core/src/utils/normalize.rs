@@ -2,7 +2,6 @@
 pub fn normalize_text(text: &str) -> String {
     text
         .to_lowercase()
-        .trim()
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")

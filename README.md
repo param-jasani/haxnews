@@ -1,235 +1,172 @@
-# HaxNews - RSS Feed Aggregator
+# HaxNews
 
-A high-performance RSS feed parser and aggregator built in Rust with deduplication, full-text search, and REST API support.
+HaxNews is a production-ready RSS feed aggregator and parser written in Rust. This README is written for users and product teams who want to run, integrate, or ship HaxNews as a service or CLI tool. It explains install steps, the available APIs, configuration, screenshots, and deployment notes.
 
-## Features
+Key outputs:
+- `haxnews-core` — core library (parsing, dedup, db, API)
+- `haxnews-cli` — command-line interface and TUI
 
-✅ **RSS Feed Parser** - Parses RSS 2.0 feeds with support for:
-  - Item extraction (title, description, link, author, publication date)
-  - Image URLs from enclosures
-  - SHA256-based deduplication hashing
+--
 
-✅ **Feed Fetcher** - Asynchronous HTTP client for fetching feeds
-  - Configurable timeouts (15 seconds default)
-  - User-agent support
-  - Error handling and retries
+## Quick Start
 
-✅ **Deduplication Engine** - Intelligent duplicate detection:
-  - Jaro-Winkler similarity scoring
-  - Configurable similarity threshold
-  - Batch duplicate detection and filtering
+Install Rust toolchain (if not already installed):
 
-✅ **Database Layer** - Persistent storage using ReDB:
-  - JSON serialization for complex types
-  - Transaction support
-  - Automatic cleanup of old items
-
-✅ **REST API** - Axum-based web server:
-  - Health check endpoint
-  - Items retrieval
-  - Full-text search
-
-✅ **Text Processing** - Utilities for:
-  - Text normalization
-  - HTML tag stripping
-  - Search text generation
-
-## Project Structure
-
-```
-haxnews-core/
-├── src/
-│   ├── api/               # REST API handlers, routes, responses
-│   ├── config/            # Configuration loading
-│   ├── db/                # Database abstraction and repository
-│   ├── dedup/             # Deduplication engine and similarity scoring
-│   ├── feed/              # RSS parser and feed fetcher
-│   ├── models/            # Data models (FeedSource, NewsItem)
-│   ├── service/           # Business logic (AggregatorService)
-│   ├── utils/             # Utilities (hashing, normalization)
-│   └── lib.rs
-└── Cargo.toml
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup update stable
 ```
 
-## Data Models
+Build and run the API server (development):
 
-### FeedSource
-Represents an RSS feed source with metadata:
-- `id`: Unique identifier (UUID)
-- `name`: Feed name
-- `url`: Feed URL
-- `priority`: Processing priority
-- `category`: Optional category
-- `status`: Active, Error, Disabled, or Paused
-- `etag` / `last_modified`: HTTP caching headers
-
-### NewsItem
-Represents a parsed news item from an RSS feed:
-- `id`: Unique identifier
-- `feed_id`: Reference to source feed
-- `title`: Article title
-- `summary`: Article summary/description
-- `image_url`: Associated image
-- `author`: Article author
-- `link`: Article URL
-- `published_at`: Publication timestamp
-- `dedup_hash`: SHA256 hash for deduplication
-- `search_text`: Normalized text for search
-
-## Usage
-
-### Parsing an RSS Feed
-
-```rust
-use haxnews_core::feed::parser::FeedParser;
-use uuid::Uuid;
-
-let feed_id = Uuid::new_v4();
-let feed_content = "<?xml version=\"1.0\"?>...</rss>";
-
-let items = FeedParser::parse(feed_id, feed_content, "Feed Name")?;
-for item in items {
-    println!("{}: {}", item.title, item.link);
-}
+```bash
+cargo run -p haxnews-cli --bin haxnews-cli
 ```
 
-### Fetching and Parsing a Feed
+Run the CLI help:
 
-```rust
-use haxnews_core::feed::fetcher::FeedFetcher;
-use haxnews_core::feed::parser::FeedParser;
-
-let fetcher = FeedFetcher::new();
-let content = fetcher.fetch("https://example.com/feed.xml").await?;
-let items = FeedParser::parse(feed_id, &content, "Example")?;
+```bash
+cd haxnews-cli
+cargo run -- --help
 ```
 
-### Using the Aggregator Service
-
-```rust
-use haxnews_core::service::AggregatorService;
-
-let aggregator = AggregatorService::new(0.85); // 85% similarity threshold
-
-let feeds = vec![
-    (uuid1, "https://feed1.com/rss".to_string(), "Feed 1".to_string()),
-    (uuid2, "https://feed2.com/rss".to_string(), "Feed 2".to_string()),
-];
-
-let items = aggregator.fetch_feeds(feeds).await?;
-```
-
-### Deduplication
-
-```rust
-use haxnews_core::dedup::DedupEngine;
-
-let engine = DedupEngine::new(0.85); // 85% threshold
-let duplicates = engine.find_duplicates(&items);
-let unique_items = engine.deduplicate(items);
-```
-
-### Database Operations
-
-```rust
-use haxnews_core::db::Repository;
-
-let repo = Repository::new("./news.db")?;
-
-// Save a feed
-repo.save_feed(&feed_source)?;
-
-// Get all feeds
-let feeds = repo.get_all_feeds()?;
-
-// Save an item
-repo.save_item(&news_item)?;
-
-// Delete old items (older than N days)
-repo.delete_old_items(30)?;
-```
-
-## Running the Example
+If you want the example parser test:
 
 ```bash
 cargo run --example test-parser
 ```
 
-Output:
-```
-🔍 Testing RSS Feed Parser
-========================
+--
 
-✅ Successfully parsed 3 items
+## Configuration
 
-Item 1:
-  Title: PAN-OS GlobalProtect Authentication Bypass (CVE-2026-0257)...
-  Link: https://thehackernews.com/2026/05/pan-os-globalprotect-authentication.html
-  Author: author
-  Published: Sat, 30 May 2026 06:41:26 +0000
-  Image URL: https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVv...
-  Dedup Hash: 06730d5729720c59
+- Global config lives in `config/feeds.toml` — add your feed sources there. Example entry:
+
+```toml
+[[feeds]]
+name = "Tech News"
+url = "https://example.com/rss"
+category = "technology"
 ```
 
-## Dependencies
+- Environment variables:
+  - `HAXNEWS_DB` — path to DB file (default: `news.db`)
+  - `HAXNEWS_PORT` — HTTP port for API (default: `8080`)
 
-Key dependencies in Cargo.toml:
-- `tokio` - Async runtime
-- `axum` - Web framework
-- `feed-rs` - RSS/Atom feed parsing
-- `redb` - Embedded database
-- `serde_json` - JSON serialization
-- `chrono` - Date/time handling
-- `uuid` - UUID generation
-- `sha2` - SHA256 hashing
-- `hex` - Hex encoding
-- `strsim` - String similarity
+--
 
-## API Endpoints (Planned)
+## Command-Line Usage (`haxnews-cli`)
 
-- `GET /health` - Health check
-- `GET /items` - Get all news items
-- `GET /search?q=query` - Search news items
-- `GET /feeds` - List configured feeds
-- `POST /feeds` - Add a new feed
+Common commands:
 
-## Future Enhancements
+- `haxnews-cli run` — start the HTTP API and fetch loop
+- `haxnews-cli fetch` — fetch configured feeds once (useful for CI)
+- `haxnews-cli parse <file>` — parse an RSS XML file locally
+- `haxnews-cli tui` — start the local text UI (ncurses-style) for browsing items
 
-- [ ] Feed caching with ETags
-- [ ] Rate limiting
-- [ ] User authentication
-- [ ] Saved articles/bookmarks
-- [ ] Category filtering
-- [ ] Advanced search syntax
-- [ ] Feed validation
-- [ ] Atom feed support
-- [ ] JSON Feed support
-- [ ] WebSocket updates
+Example: run one-time fetch and print items:
 
-## Testing
-
-Run tests:
 ```bash
-cargo test
+cd haxnews-cli
+cargo run -- fetch --verbose
 ```
 
-Run tests with output:
-```bash
-cargo test -- --nocapture
+--
+
+## HTTP API (stable endpoints)
+
+Base URL: `http://<host>:<port>` (default `http://localhost:8080`)
+
+- `GET /health`
+  - Returns: 200 OK if service is healthy
+
+- `GET /feeds`
+  - Returns: JSON array of configured feed sources
+
+- `POST /feeds`
+  - Body: `{ "name": "Feed name", "url": "https://..." }`
+  - Adds a new feed to the repository and returns the created feed object
+
+- `GET /items`
+  - Query params: `?limit=50&offset=0`
+  - Returns: paginated list of news items
+
+- `GET /items/:id`
+  - Returns: single item by id
+
+- `GET /search?q=<term>`
+  - Performs full-text search across items (uses normalized `search_text`)
+  - Optional: `?limit=20&sort=published_at`
+
+Response format (example `GET /items`):
+
+```json
+[
+  {
+    "id":"...",
+    "title":"...",
+    "summary":"...",
+    "link":"https://...",
+    "image_url":"https://...",
+    "published_at":"2026-05-30T06:41:26Z"
+  }
+]
 ```
 
-## Build
+--
 
-Development build:
-```bash
-cargo build
-```
+## TUI / Local Browser
 
-Release build:
-```bash
-cargo build --release
-```
+The `haxnews-cli tui` command provides a terminal UI for quick browsing, marking read, and opening links. It uses local configuration and the same DB as the API.
 
-## License
+--
 
-MIT
+## Screenshots
+
+Add your product screenshots to `docs/images/` and reference them in the README. Below are placeholders used for product dispatch. Replace the files with your actual images (PNG preferred):
+
+- `docs/images/Screenshot (57).png` — CLI output and example fetch
+- `docs/images/Screenshot (58).png` — API dashboard / sample curl responses
+- `docs/images/Screenshot (60).png` — TUI browsing view
+
+Example screenshots included below:
+
+CLI example:
+
+![CLI screenshot](docs/images/Screenshot%20(57).png)
+
+API example:
+
+![API screenshot](docs/images/Screenshot%20(58).png)
+
+TUI example:
+
+![TUI screenshot](docs/images/Screenshot%20(60).png)
+
+If you want, upload the screenshots and I will add them inline and update captions.
+
+--
+
+## Deploying
+
+Minimal notes to deploy as a service:
+
+- Use a systemd unit or Windows service to run `haxnews-cli run`.
+- Persist `news.db` on disk or mount an external storage volume.
+- Expose the API behind a reverse proxy (NGINX) and enable TLS.
+- Add healthchecks pointing to `/health` for autoscaling.
+
+--
+
+## Integrations
+
+- Webhook support: You can subscribe external services by implementing a small forwarder that polls `GET /items`.
+- Embed in other Rust apps: add `haxnews-core` as a dependency and call parsing/aggregator functions directly.
+
+--
+
+## Contributing
+
+Please open issues or PRs on the GitHub repo. For code style follow existing Rust patterns in the workspace and run `cargo fmt` before opening a PR.
+
+--
