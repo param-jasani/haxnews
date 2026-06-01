@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 use haxnews_core::db::Repository;
 use crate::get_db_path;
 
-use crate::commands::{cleanup_command, fetch_command, feeds_sync, install_command};
+use crate::commands::{
+    install_command, fetch_command, feeds_sync, cleanup_command, status_command, config_command
+};
 use haxnews_core::models::FeedSource;
 use haxnews_core::api::{create_router, routes::AppState};
 use std::sync::Arc;
@@ -20,7 +22,18 @@ pub struct NewsItemUI {
     pub category: String, // added category
 }
 
+use chrono::{DateTime, Utc};
 use tokio::sync::mpsc::{self, UnboundedSender, UnboundedReceiver};
+
+#[derive(Debug, Clone)]
+pub struct OperationStatus {
+    pub command: String,
+    pub started_at: DateTime<Utc>,
+    pub completed_at: Option<DateTime<Utc>>,
+    pub success: bool,
+    pub message: String,
+    pub details: Option<String>,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Screen {
@@ -103,8 +116,12 @@ pub struct App {
     pub image_rx: UnboundedReceiver<Vec<u8>>,
     pub current_image: Option<ratatui_image::protocol::StatefulProtocol>,
     pub pending_action: Option<ActionRequest>,
-    pub status_message: Option<String>,
-    pub error_message: Option<String>,
+    pub last_operation: Option<OperationStatus>,
+    pub active_operation: Option<OperationStatus>,
+    pub news_list_state: ratatui::widgets::ListState,
+    pub feeds_list_state: ratatui::widgets::TableState,
+    pub search_list_state: ratatui::widgets::ListState,
+    pub article_scroll_offset: u16,
 }
 
 impl Default for App {
@@ -133,8 +150,12 @@ impl App {
             image_rx: rx,
             current_image: None,
             pending_action: None,
-            status_message: None,
-            error_message: None,
+            last_operation: None,
+            active_operation: None,
+            news_list_state: ratatui::widgets::ListState::default(),
+            feeds_list_state: ratatui::widgets::TableState::default(),
+            search_list_state: ratatui::widgets::ListState::default(),
+            article_scroll_offset: 0,
         };
         app.load_items();
         app
@@ -144,50 +165,70 @@ impl App {
         self.pending_action = Some(action);
     }
 
-    pub fn set_status(&mut self, message: impl Into<String>) {
-        self.status_message = Some(message.into());
-        self.error_message = None;
+    pub fn set_status(&mut self, msg: impl Into<String>) {
+        self.last_operation = Some(OperationStatus {
+            command: "System".to_string(),
+            started_at: Utc::now(),
+            completed_at: Some(Utc::now()),
+            success: true,
+            message: msg.into(),
+            details: None,
+        });
     }
 
-    pub fn set_error(&mut self, message: impl Into<String>) {
-        self.error_message = Some(message.into());
-        self.status_message = None;
+    pub fn set_error(&mut self, msg: impl Into<String>) {
+        self.last_operation = Some(OperationStatus {
+            command: "System".to_string(),
+            started_at: Utc::now(),
+            completed_at: Some(Utc::now()),
+            success: false,
+            message: msg.into(),
+            details: None,
+        });
     }
 
     pub async fn process_pending_action(&mut self) {
         if let Some(action) = self.pending_action.take() {
             let action_name = action.clone();
+            
+            self.active_operation = Some(OperationStatus {
+                command: format!("{:?}", action_name),
+                started_at: Utc::now(),
+                completed_at: None,
+                success: false,
+                message: "Running...".to_string(),
+                details: None,
+            });
+
+            // Release the local DB connection so commands can acquire the lock
+            self.db = None;
+
             let result = match action {
-                ActionRequest::Install => install_command().await,
-                ActionRequest::FetchAll => fetch_command(None).await,
-                ActionRequest::FetchSelectedFeed(id) => fetch_command(id).await,
-                ActionRequest::FeedsSync => feeds_sync().await,
-                ActionRequest::Status => Ok(()),
-                ActionRequest::Cleanup => cleanup_command().await,
-                ActionRequest::Config => Ok(()),
+                ActionRequest::Install => install_command().await.map_err(|e| e.to_string()),
+                ActionRequest::FetchAll => fetch_command(None).await.map_err(|e| e.to_string()),
+                ActionRequest::FetchSelectedFeed(id) => fetch_command(id).await.map_err(|e| e.to_string()),
+                ActionRequest::FeedsSync => feeds_sync().await.map_err(|e| e.to_string()),
+                ActionRequest::Status => status_command().await.map_err(|e| e.to_string()),
+                ActionRequest::Cleanup => cleanup_command().await.map_err(|e| e.to_string()),
+                ActionRequest::Config => config_command().await.map_err(|e| e.to_string()),
                 ActionRequest::StartServer => {
                     let db = match Repository::new(get_db_path()) {
                         Ok(db) => db,
                         Err(err) => {
                             self.set_error(format!("Unable to start server: {}", err));
+                            self.active_operation = None;
                             return;
                         }
                     };
                     let state = AppState { db: Arc::new(db) };
                     let app = create_router(state);
                     tokio::spawn(async move {
-                        match TcpListener::bind("127.0.0.1:8080").await {
-                            Ok(listener) => {
-                                if let Err(err) = axum::serve(listener, app).await {
-                                    eprintln!("Server failed: {}", err);
-                                }
-                            }
-                            Err(err) => {
-                                eprintln!("Server failed: {}", err);
-                            }
+                        if let Ok(listener) = TcpListener::bind("127.0.0.1:8080").await {
+                            let _ = axum::serve(listener, app).await;
                         }
                     });
                     self.set_status("Background server started on http://127.0.0.1:8080");
+                    self.active_operation = None;
                     return;
                 }
                 ActionRequest::RunForeground => {
@@ -195,6 +236,7 @@ impl App {
                         Ok(db) => db,
                         Err(err) => {
                             self.set_error(format!("Unable to start background mode: {}", err));
+                            self.active_operation = None;
                             return;
                         }
                     };
@@ -203,9 +245,7 @@ impl App {
                     let app = create_router(state);
                     tokio::spawn(async move {
                         if let Ok(listener) = TcpListener::bind("127.0.0.1:8080").await {
-                            if let Err(err) = axum::serve(listener, app).await {
-                                eprintln!("Run mode server failed: {}", err);
-                            }
+                            let _ = axum::serve(listener, app).await;
                         }
                     });
                     let db2 = db_arc.clone();
@@ -227,37 +267,31 @@ impl App {
                         }
                     });
                     self.set_status("Run mode started: API + hourly fetch loop on http://127.0.0.1:8080");
+                    self.active_operation = None;
                     return;
                 }
             };
 
+            // Re-acquire the DB lock after command finishes
+            if let Ok(repo) = Repository::new(crate::get_db_path()) {
+                self.db = Some(repo);
+            }
+
+            let mut op = self.active_operation.take().unwrap();
+            op.completed_at = Some(Utc::now());
+
             match result {
-                Ok(_) => {
-                    match action_name {
-                        ActionRequest::Status => {
-                            let data_dir = crate::get_data_dir();
-                            let db = Repository::new(get_db_path());
-                            let (feeds, items) = match db {
-                                Ok(db) => (
-                                    db.get_all_feeds().unwrap_or_default().len(),
-                                    db.get_items(None, None, None).unwrap_or_default().len(),
-                                ),
-                                Err(_) => (0, 0),
-                            };
-                            self.set_status(format!("Installed: {:?}, Feeds: {}, Items: {}", data_dir, feeds, items));
-                        }
-                        ActionRequest::Config => {
-                            self.set_status(format!("Data: {:?}, Config: {:?}, DB: {:?}", crate::get_data_dir(), crate::get_config_path(), get_db_path()));
-                        }
-                        _ => {
-                            self.set_status(format!("Action completed: {:?}", action_name));
-                        }
-                    }
+                Ok(cmd_result) => {
+                    op.success = cmd_result.success;
+                    op.message = cmd_result.message;
+                    op.details = cmd_result.details;
                 }
                 Err(err) => {
-                    self.set_error(format!("Action failed: {}", err));
+                    op.success = false;
+                    op.message = format!("Action failed: {}", err);
                 }
             }
+            self.last_operation = Some(op);
             self.load_items();
         }
     }
@@ -287,6 +321,10 @@ impl App {
                     }
                 }).collect();
             }
+            if !self.items.is_empty() && self.news_list_state.selected().is_none() {
+                self.news_list_state.select(Some(0));
+                self.selected_item = 0;
+            }
         }
         self.trigger_image_load();
     }
@@ -294,7 +332,9 @@ impl App {
     pub fn next_item(&mut self) {
         if !self.items.is_empty() {
             self.selected_item = (self.selected_item + 1) % self.items.len();
+            self.news_list_state.select(Some(self.selected_item));
             self.current_image = None;
+            self.article_scroll_offset = 0;
             self.trigger_image_load();
         }
     }
@@ -306,7 +346,9 @@ impl App {
             } else {
                 self.selected_item - 1
             };
+            self.news_list_state.select(Some(self.selected_item));
             self.current_image = None;
+            self.article_scroll_offset = 0;
             self.trigger_image_load();
         }
     }
@@ -365,6 +407,11 @@ impl App {
                 })
                 .cloned()
                 .collect();
+        }
+        if !self.search_results.is_empty() {
+            self.search_list_state.select(Some(0));
+        } else {
+            self.search_list_state.select(None);
         }
         self.is_searching = true;
     }

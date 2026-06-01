@@ -23,3 +23,4 @@ tracing-subscriber = "0.3"
 ratatui-image = { version = "11.0.2", default-features = false, features = ["crossterm"] }
 image = "0.25.10"
 reqwest.workspace = true
+chrono.workspace = true

@@ -127,42 +127,43 @@ fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect, colors: &ThemeColors
 
     let logo_lines = vec![
         Line::from(vec![
-            Span::styled("██╗  ██╗  █████╗  ", Style::default().fg(colors.text).add_modifier(Modifier::BOLD)),
-            Span::styled("██╗  ", Style::default().fg(Color::Rgb(50, 200, 200))),
-            Span::styled("██╗", Style::default().fg(colors.text).add_modifier(Modifier::BOLD)),
-            Span::styled("    ███╗   ██╗", Style::default().fg(colors.secondary)),
+            Span::styled(" ██╗  ██╗  █████╗  ", Style::default().fg(colors.primary).add_modifier(Modifier::BOLD)),
+            Span::styled("██╗  ", Style::default().fg(colors.accent).add_modifier(Modifier::BOLD)),
+            Span::styled("██╗", Style::default().fg(colors.primary).add_modifier(Modifier::BOLD)),
+            Span::styled("███╗   ██╗███████╗██╗    ██╗███████╗", Style::default().fg(colors.primary).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled("██║  ██║ ██╔══██╗ ", Style::default().fg(colors.text).add_modifier(Modifier::BOLD)),
-            Span::styled("╚██╗", Style::default().fg(Color::Rgb(50, 200, 200))),
-            Span::styled("██╔╝", Style::default().fg(colors.text).add_modifier(Modifier::BOLD)),
-            Span::styled("    ████╗  ██║", Style::default().fg(colors.secondary)),
+            Span::styled(" ██║  ██║ ██╔══██╗ ", Style::default().fg(colors.primary).add_modifier(Modifier::BOLD)),
+            Span::styled("╚██╗", Style::default().fg(colors.accent).add_modifier(Modifier::BOLD)),
+            Span::styled("██╔╝", Style::default().fg(colors.primary).add_modifier(Modifier::BOLD)),
+            Span::styled("████╗  ██║██╔════╝██║    ██║██╔════╝", Style::default().fg(colors.primary).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled("███████║ ███████║  ", Style::default().fg(colors.text).add_modifier(Modifier::BOLD)),
-            Span::styled("╚███╔╝ ", Style::default().fg(Color::Rgb(50, 200, 200))),
-            Span::styled("    ██╔██╗ ██║", Style::default().fg(colors.secondary)),
+            Span::styled(" ███████║ ███████║  ", Style::default().fg(colors.accent).add_modifier(Modifier::BOLD)),
+            Span::styled("╚███", Style::default().fg(colors.accent).add_modifier(Modifier::BOLD)),
+            Span::styled("╔╝ ", Style::default().fg(colors.accent).add_modifier(Modifier::BOLD)), // Wait, this row was fully accent originally, let's make it consistent. 
+            Span::styled("██╔██╗ ██║█████╗  ██║ █╗ ██║███████╗", Style::default().fg(colors.accent).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled("██╔══██║ ██╔══██║  ", Style::default().fg(colors.text).add_modifier(Modifier::BOLD)),
-            Span::styled("██╔", Style::default().fg(colors.text).add_modifier(Modifier::BOLD)),
-            Span::styled("██╗ ", Style::default().fg(Color::Rgb(50, 200, 200))),
-            Span::styled("    ██║╚██╗██║", Style::default().fg(colors.secondary)),
+            Span::styled(" ██╔══██║ ██╔══██║  ", Style::default().fg(colors.secondary)),
+            Span::styled("██╔", Style::default().fg(colors.secondary)),
+            Span::styled("██╗ ", Style::default().fg(colors.accent)),
+            Span::styled("██║╚██╗██║██╔══╝  ██║███╗██║╚════██║", Style::default().fg(colors.secondary)),
         ]),
         Line::from(vec![
-            Span::styled("██║  ██║ ██║  ██║ ", Style::default().fg(colors.text).add_modifier(Modifier::BOLD)),
-            Span::styled("██╔╝ ", Style::default().fg(colors.text).add_modifier(Modifier::BOLD)),
-            Span::styled("██╗", Style::default().fg(Color::Rgb(50, 200, 200))),
-            Span::styled("    ██║ ╚████║", Style::default().fg(colors.secondary)),
+            Span::styled(" ██║  ██║ ██║  ██║ ", Style::default().fg(colors.secondary)),
+            Span::styled("██╔╝ ", Style::default().fg(colors.secondary)),
+            Span::styled("██╗", Style::default().fg(colors.accent)),
+            Span::styled("██║ ╚████║███████╗╚███╔███╔╝███████║", Style::default().fg(colors.secondary)),
         ]),
         Line::from(vec![
-            Span::styled("╚═╝  ╚═╝ ╚═╝  ╚═╝ ", Style::default().fg(colors.text).add_modifier(Modifier::BOLD)),
-            Span::styled("╚═╝  ", Style::default().fg(colors.text).add_modifier(Modifier::BOLD)),
-            Span::styled("╚═╝", Style::default().fg(Color::Rgb(50, 200, 200))),
-            Span::styled("    ╚═╝  ╚═══╝", Style::default().fg(colors.secondary)),
+            Span::styled(" ╚═╝  ╚═╝ ╚═╝  ╚═╝ ", Style::default().fg(colors.text)),
+            Span::styled("╚═╝  ", Style::default().fg(colors.text)),
+            Span::styled("╚═╝", Style::default().fg(colors.accent)),
+            Span::styled("╚═╝  ╚═══╝╚══════╝ ╚══╝╚══╝ ╚══════╝", Style::default().fg(colors.text)),
         ]),
         Line::from(""),
-        Line::from(Span::styled("Made with love by team Haxnation", Style::default().fg(Color::Red).add_modifier(Modifier::ITALIC))),
+        Line::from(Span::styled("Made with love by team Haxnation", Style::default().fg(colors.accent).add_modifier(Modifier::ITALIC))),
     ];
     
     let logo = Paragraph::new(logo_lines)
@@ -229,7 +230,7 @@ fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect, colors: &ThemeColors
         let clean_desc = html2text::from_read(item.description.as_bytes(), 30);
         let desc_lines: Vec<&str> = clean_desc.lines().take(6).collect();
         for line in desc_lines {
-            lines.push(Line::from(Span::styled(line, Style::default().fg(Color::DarkGray))));
+            lines.push(Line::from(Span::styled(line, Style::default().fg(colors.secondary))));
         }
 
         let card = Paragraph::new(lines)
@@ -269,7 +270,12 @@ fn draw_news(f: &mut Frame, app: &mut App, area: Rect, colors: &ThemeColors) {
 
     let items: Vec<ListItem> = app.items.iter().enumerate().map(|(i, item)| {
         let is_selected = i == app.selected_item;
-        let indicator = if is_selected { "▶ " } else { "  " };
+        let style = if is_selected {
+            Style::default().bg(colors.highlight)
+        } else {
+            Style::default()
+        };
+
         let title_style = if is_selected {
             Style::default().fg(colors.accent).add_modifier(Modifier::BOLD)
         } else {
@@ -280,63 +286,67 @@ fn draw_news(f: &mut Frame, app: &mut App, area: Rect, colors: &ThemeColors) {
 
         ListItem::new(vec![
             Line::from(vec![
-                Span::styled(indicator, Style::default().fg(colors.accent)),
+                Span::styled(if is_selected { " ┃ " } else { "   " }, Style::default().fg(colors.accent).add_modifier(Modifier::BOLD)),
                 Span::styled(&item.title, title_style),
             ]),
             Line::from(vec![
-                Span::raw("    "),
+                Span::raw("   "),
                 Span::styled(format!("[{}]", item.category), Style::default().fg(colors.primary)),
                 Span::raw(" "),
                 Span::styled(item.feed_name.as_deref().unwrap_or(""), Style::default().fg(colors.secondary)),
                 Span::raw("  "),
-                Span::styled(time_str, Style::default().fg(Color::DarkGray)),
+                Span::styled(time_str, Style::default().fg(colors.secondary)),
             ]),
-            Line::from(""),
-        ])
+            Line::from(""), // spacing for card effect
+        ]).style(style)
     }).collect();
 
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(colors.secondary)));
-    f.render_widget(list, left_chunks[1]);
+    f.render_stateful_widget(list, left_chunks[1], &mut app.news_list_state);
 
     // --- Right Pane: Reading Pane ---
     if let Some(selected) = app.items.get(app.selected_item) {
         let has_img = app.current_image.is_some();
-        let right_chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(5),   // Header: title + meta
-                Constraint::Length(if has_img { 16 } else { 0 }), // Image
-                Constraint::Min(5),      // Body: description
-                Constraint::Length(3),   // Footer: link
-            ])
-            .split(main_chunks[1]);
-
-        // -- Article Header --
+        // -- Unify the right panel layout into a single block --
         let author_str = selected.author.as_deref().unwrap_or("Unknown");
         let date_str = selected.published_at.as_deref().unwrap_or("Unknown Date");
         let feed_str = selected.feed_name.as_deref().unwrap_or("Unknown Feed");
 
-        let header_lines = vec![
+        let article_lines = vec![
             Line::from(Span::styled(&selected.title, Style::default().fg(colors.primary).add_modifier(Modifier::BOLD))),
             Line::from(""),
             Line::from(vec![
-                Span::styled("  by ", Style::default().fg(Color::DarkGray)),
+                Span::styled("  by ", Style::default().fg(colors.secondary)),
                 Span::styled(author_str, Style::default().fg(colors.accent)),
-                Span::styled("  •  ", Style::default().fg(Color::DarkGray)),
+                Span::styled("  •  ", Style::default().fg(colors.secondary)),
                 Span::styled(date_str, Style::default().fg(colors.text)),
-                Span::styled("  •  ", Style::default().fg(Color::DarkGray)),
+                Span::styled("  •  ", Style::default().fg(colors.secondary)),
                 Span::styled(feed_str, Style::default().fg(colors.secondary)),
             ]),
+            Line::from(vec![
+                Span::styled("  🔗 ", Style::default().fg(colors.secondary)),
+                Span::styled(&selected.url, Style::default().fg(colors.accent).add_modifier(Modifier::UNDERLINED)),
+            ]),
+            Line::from(Span::styled("─".repeat(main_chunks[1].width as usize), Style::default().fg(colors.highlight))),
         ];
-        let article_header = Paragraph::new(header_lines)
+
+        let right_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(6), // Title + Meta + Divider
+                Constraint::Length(if has_img { 16 } else { 0 }), // Image
+                Constraint::Min(5), // Body
+            ])
+            .split(main_chunks[1]);
+
+        let header = Paragraph::new(article_lines)
             .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(colors.primary)).title(" Article "))
             .wrap(Wrap { trim: true });
-        f.render_widget(article_header, right_chunks[0]);
+        f.render_widget(header, right_chunks[0]);
 
-        // -- Image --
         if has_img {
-            let img_block = Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(colors.secondary)).title(" Preview ");
+            let img_block = Block::default().borders(Borders::LEFT | Borders::RIGHT).border_style(Style::default().fg(colors.primary));
             let inner = img_block.inner(right_chunks[1]);
             f.render_widget(img_block, right_chunks[1]);
             let image_widget = ratatui_image::StatefulImage::default();
@@ -345,28 +355,18 @@ fn draw_news(f: &mut Frame, app: &mut App, area: Rect, colors: &ThemeColors) {
             }
         }
 
-        // -- Body --
-        let clean_desc = html2text::from_read(selected.description.as_bytes(), 100);
+        let clean_desc = html2text::from_read(selected.description.as_bytes(), right_chunks[2].width as usize);
         let mut body_lines: Vec<Line> = Vec::new();
+        body_lines.push(Line::from(""));
         for line in clean_desc.lines() {
             body_lines.push(Line::from(Span::styled(line, Style::default().fg(colors.text))));
         }
 
         let body = Paragraph::new(body_lines)
-            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(colors.secondary)).title(" Summary "))
-            .wrap(Wrap { trim: true });
+            .block(Block::default().borders(Borders::LEFT | Borders::RIGHT | Borders::BOTTOM).border_type(BorderType::Rounded).border_style(Style::default().fg(colors.primary)))
+            .wrap(Wrap { trim: true })
+            .scroll((app.article_scroll_offset, 0));
         f.render_widget(body, right_chunks[2]);
-
-        // -- Footer: Link --
-        let footer_lines = vec![
-            Line::from(vec![
-                Span::styled("  🔗 ", Style::default().fg(colors.secondary)),
-                Span::styled(&selected.url, Style::default().fg(Color::LightBlue).add_modifier(Modifier::UNDERLINED)),
-            ]),
-        ];
-        let link_footer = Paragraph::new(footer_lines)
-            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(colors.secondary)));
-        f.render_widget(link_footer, right_chunks[3]);
 
     } else {
         let empty = Paragraph::new("  No articles available. Run `haxnews fetch` to get started.")
@@ -398,8 +398,9 @@ fn draw_search(f: &mut Frame, app: &mut App, area: Rect, colors: &ThemeColors) {
     }).collect();
 
     let list = List::new(results)
-        .block(Block::default().title(format!(" Results ({}) ", app.search_results.len())).borders(Borders::ALL).border_style(Style::default().fg(colors.secondary)));
-    f.render_widget(list, chunks[1]);
+        .block(Block::default().title(format!(" Results ({}) ", app.search_results.len())).borders(Borders::ALL).border_style(Style::default().fg(colors.secondary)))
+        .highlight_style(Style::default().bg(colors.highlight));
+    f.render_stateful_widget(list, chunks[1], &mut app.search_list_state);
 }
 
 fn draw_feeds(f: &mut Frame, app: &mut App, area: Rect, colors: &ThemeColors) {
@@ -421,8 +422,8 @@ fn draw_feeds(f: &mut Frame, app: &mut App, area: Rect, colors: &ThemeColors) {
         f.render_widget(empty, chunks[0]);
     } else {
         let rows: Vec<Row> = app.feeds.iter().enumerate().map(|(i, feed)| {
-            let style = if i == app.selected_feed {
-                Style::default().fg(colors.accent).add_modifier(Modifier::BOLD | Modifier::REVERSED)
+            let style = if i == app.feeds_list_state.selected().unwrap_or(0) {
+                Style::default().bg(colors.highlight)
             } else {
                 Style::default().fg(colors.text)
             };
@@ -451,8 +452,8 @@ fn draw_feeds(f: &mut Frame, app: &mut App, area: Rect, colors: &ThemeColors) {
             Constraint::Percentage(15),
         ])
         .header(header)
-        .block(Block::default().borders(Borders::ALL).title(" Managed Feeds ").border_style(Style::default().fg(colors.primary)));
-        f.render_widget(table, chunks[0]);
+        .row_highlight_style(Style::default().bg(colors.highlight));
+        f.render_stateful_widget(table, chunks[0], &mut app.feeds_list_state);
     }
 
     let footer = Paragraph::new(" [p] Pause  [e] Enable  [d] Disable  [x] Remove  [a] Add Feed  [y] Sync Feeds ")
@@ -472,9 +473,9 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect, colors: &ThemeColors)
         Line::from(vec![
             Span::styled("  Current Theme: ", Style::default().fg(colors.secondary)),
             Span::styled(app.current_theme.name(), Style::default().fg(colors.accent).add_modifier(Modifier::BOLD)),
-            Span::styled("  |  Press ", Style::default().fg(Color::DarkGray)),
+            Span::styled("  |  Press ", Style::default().fg(colors.secondary)),
             Span::styled("Enter", Style::default().fg(colors.accent)),
-            Span::styled(" to cycle themes", Style::default().fg(Color::DarkGray)),
+            Span::styled(" to cycle themes", Style::default().fg(colors.secondary)),
         ]),
     ])
     .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(colors.primary)).title(" Settings "));
@@ -534,7 +535,7 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect, colors: &ThemeColors)
             Span::styled("[R] Run", Style::default().fg(colors.accent)),
         ]),
         Line::from(""),
-        Line::from(Span::styled("  HaxNews v0.1.0 — Made with ❤ by team Haxnation", Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC))),
+        Line::from(Span::styled("  HaxNews v0.1.0 — Made with ❤ by team Haxnation", Style::default().fg(colors.secondary).add_modifier(Modifier::ITALIC))),
     ];
     let info = Paragraph::new(info_lines)
         .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(colors.secondary)).title(" Info "));
@@ -562,7 +563,7 @@ fn draw_popup(f: &mut Frame, popup: &PopupState, colors: &ThemeColors) {
                 Span::styled(input, Style::default().fg(colors.primary).add_modifier(Modifier::BOLD)),
                 Span::styled("█", Style::default().fg(colors.accent)),
             ]));
-            popup_lines.push(Line::from(Span::styled("  [Enter] Confirm  [Esc] Cancel", Style::default().fg(Color::DarkGray))));
+            popup_lines.push(Line::from(Span::styled("  [Enter] Confirm  [Esc] Cancel", Style::default().fg(colors.secondary))));
             " Pause Feed "
         }
         PopupState::AddFeedInput { stage, name, url, priority, category } => {
@@ -585,7 +586,7 @@ fn draw_popup(f: &mut Frame, popup: &PopupState, colors: &ThemeColors) {
                 Span::styled(value, Style::default().fg(colors.primary).add_modifier(Modifier::BOLD)),
                 Span::styled("█", Style::default().fg(colors.accent)),
             ]));
-            popup_lines.push(Line::from(Span::styled("  [Enter] Next  [Esc] Cancel  [Backspace] Edit", Style::default().fg(Color::DarkGray))));
+            popup_lines.push(Line::from(Span::styled("  [Enter] Next  [Esc] Cancel  [Backspace] Edit", Style::default().fg(colors.secondary))));
             " Add Feed "
         }
         PopupState::None => "",
@@ -597,10 +598,12 @@ fn draw_popup(f: &mut Frame, popup: &PopupState, colors: &ThemeColors) {
 }
 
 fn draw_footer(f: &mut Frame, app: &App, area: Rect, colors: &ThemeColors) {
-    let footer_text = if let Some(err) = &app.error_message {
-        Span::styled(format!(" ERROR: {} ", err), Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
-    } else if let Some(status) = &app.status_message {
-        Span::styled(format!(" {} ", status), Style::default().fg(colors.accent))
+    let footer_text = if let Some(op) = &app.active_operation {
+        Span::styled(format!(" ⏳ {} ", op.message), Style::default().fg(colors.accent).add_modifier(Modifier::BOLD))
+    } else if let Some(op) = &app.last_operation {
+        let prefix = if op.success { "✅" } else { "❌" };
+        let color = if op.success { colors.text } else { colors.primary };
+        Span::styled(format!(" {} {} ", prefix, op.message), Style::default().fg(color).add_modifier(Modifier::BOLD))
     } else {
         Span::styled("[Tab] Switch  [1-4] Tabs  [q] Quit  [s] Search  [f] Fetch  [y] Sync Feeds", Style::default().fg(colors.secondary))
     };

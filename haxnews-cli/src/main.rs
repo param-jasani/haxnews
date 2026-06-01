@@ -103,34 +103,48 @@ pub fn get_config_path() -> PathBuf {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Setup tracing
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO)
-        .finish();
-    if let Err(err) = tracing::subscriber::set_global_default(subscriber) {
-        eprintln!("Unable to set tracing subscriber: {}", err);
+    let cli = Cli::parse();
+    let is_tui = cli.interactive || matches!(cli.command, None | Some(Commands::Tui));
+
+    if !is_tui {
+        let subscriber = FmtSubscriber::builder()
+            .with_max_level(Level::INFO)
+            .finish();
+        if let Err(err) = tracing::subscriber::set_global_default(subscriber) {
+            eprintln!("Unable to set tracing subscriber: {}", err);
+        }
     }
 
-    let cli = Cli::parse();
 
-    match cli.command {
-        Some(Commands::Install) => install_command().await?,
-        Some(Commands::Run) => run_command_fg().await?,
-        Some(Commands::Server) => server_start().await?,
-        Some(Commands::Fetch { feed }) => fetch_command(feed).await?,
+    let cmd_result = match cli.command {
+        Some(Commands::Install) => Some(install_command().await?),
+        Some(Commands::Run) => { run_command_fg().await?; None },
+        Some(Commands::Server) => { server_start().await?; None },
+        Some(Commands::Fetch { feed }) => Some(fetch_command(feed).await?),
         Some(Commands::Feeds(args)) => match args.action {
-            FeedsAction::List => feeds_list().await?,
-            FeedsAction::Add => feeds_add().await?,
-            FeedsAction::Sync => feeds_sync().await?,
+            FeedsAction::List => Some(feeds_list().await?),
+            FeedsAction::Add => Some(feeds_add().await?),
+            FeedsAction::Sync => Some(feeds_sync().await?),
         },
-        Some(Commands::Items { search, limit }) => items_command(search, limit).await?,
-        Some(Commands::Status) => status_command().await?,
-        Some(Commands::Cleanup) => cleanup_command().await?,
-        Some(Commands::Config) => config_command().await?,
-        Some(Commands::Tui) => tui::run_tui().await?,
+        Some(Commands::Items { search, limit }) => Some(items_command(search, limit).await?),
+        Some(Commands::Status) => Some(status_command().await?),
+        Some(Commands::Cleanup) => Some(cleanup_command().await?),
+        Some(Commands::Config) => Some(config_command().await?),
+        Some(Commands::Tui) => { tui::run_tui().await?; None },
         None => {
-            // Default to TUI
             tui::run_tui().await?;
+            None
+        }
+    };
+
+    if let Some(res) = cmd_result {
+        if res.success {
+            println!("✅ {}", res.message);
+        } else {
+            eprintln!("❌ {}", res.message);
+        }
+        if let Some(details) = res.details {
+            println!("{}", details);
         }
     }
 

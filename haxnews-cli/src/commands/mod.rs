@@ -11,14 +11,33 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 
 use std::io::{self, Write};
+use chrono::{DateTime, Utc};
 
-pub async fn install_command() -> Result<()> {
+#[derive(Debug, Clone)]
+pub struct CommandResult {
+    pub success: bool,
+    pub message: String,
+    pub details: Option<String>,
+}
+
+impl CommandResult {
+    pub fn success(msg: impl Into<String>) -> Self {
+        Self { success: true, message: msg.into(), details: None }
+    }
+    
+    pub fn error(msg: impl Into<String>) -> Self {
+        Self { success: false, message: msg.into(), details: None }
+    }
+}
+
+pub async fn install_command() -> Result<CommandResult> {
     let data_dir = get_data_dir();
     let config_path = get_config_path();
     
+    let mut details = String::new();
     if !data_dir.exists() {
         fs::create_dir_all(&data_dir)?;
-        println!("Created data directory at {:?}", data_dir);
+        details.push_str(&format!("Created data directory at {:?}\n", data_dir));
     }
 
     if !config_path.exists() {
@@ -41,20 +60,24 @@ category = "Cybersecurity"
         let local_config = std::path::Path::new("config/feeds.toml");
         if local_config.exists() {
             fs::copy(local_config, &config_path)?;
-            println!("Copied local feeds.toml to {:?}", config_path);
+            details.push_str(&format!("Copied local feeds.toml to {:?}\n", config_path));
         } else {
             fs::write(&config_path, default_config)?;
-            println!("Created default feeds.toml at {:?}", config_path);
+            details.push_str(&format!("Created default feeds.toml at {:?}\n", config_path));
         }
     } else {
-        println!("Config already exists at {:?}", config_path);
+        details.push_str(&format!("Config already exists at {:?}\n", config_path));
     }
     
     // Initialize DB
     let _db = Repository::new(get_db_path())?;
-    println!("Database initialized.");
+    details.push_str("Database initialized.\n");
     
-    Ok(())
+    Ok(CommandResult {
+        success: true,
+        message: "Installation completed successfully".to_string(),
+        details: Some(details),
+    })
 }
 
 pub async fn run_command_fg() -> Result<()> {
@@ -86,8 +109,7 @@ pub async fn server_start() -> Result<()> {
     Ok(())
 }
 
-pub async fn fetch_command(feed_id: Option<String>) -> Result<()> {
-    println!("Starting manual fetch...");
+pub async fn fetch_command(feed_id: Option<String>) -> Result<CommandResult> {
     let db = Repository::new(get_db_path())?;
     let fetcher = FeedFetcher::new();
     
@@ -99,12 +121,13 @@ pub async fn fetch_command(feed_id: Option<String>) -> Result<()> {
     };
     
     if feeds_to_fetch.is_empty() {
-        println!("No feeds to fetch. Make sure you have feeds in the database.");
-        return Ok(());
+        return Ok(CommandResult::error("No feeds to fetch. Make sure you have feeds in the database."));
     }
     
+    let mut details = String::new();
+    let mut total_saved = 0;
+
     for feed in feeds_to_fetch {
-        println!("Fetching {} ({})", feed.name, feed.url);
         match fetcher.fetch(&feed.url).await {
             Ok(content) => {
                 match FeedParser::parse(feed.id, &content, &feed.name) {
@@ -115,38 +138,49 @@ pub async fn fetch_command(feed_id: Option<String>) -> Result<()> {
                                 saved += 1;
                             }
                         }
-                        println!("✅ Saved {} items for {}", saved, feed.name);
+                        details.push_str(&format!("✅ Saved {} items for {}\n", saved, feed.name));
+                        total_saved += saved;
                     },
-                    Err(e) => println!("❌ Parse error for {}: {}", feed.name, e),
+                    Err(e) => details.push_str(&format!("❌ Parse error for {}: {}\n", feed.name, e)),
                 }
             },
-            Err(e) => println!("❌ Fetch error for {}: {}", feed.name, e),
+            Err(e) => details.push_str(&format!("❌ Fetch error for {}: {}\n", feed.name, e)),
         }
     }
     
-    Ok(())
+    Ok(CommandResult {
+        success: true,
+        message: format!("Fetch complete. {} items saved.", total_saved),
+        details: Some(details),
+    })
 }
 
-pub async fn feeds_list() -> Result<()> {
+pub async fn feeds_list() -> Result<CommandResult> {
     let db = Repository::new(get_db_path())?;
     let feeds = db.get_all_feeds()?;
     
-    println!("{:<40} | {:<20} | {}", "ID", "Name", "URL");
-    println!("{:-<40}-+-{:-<20}-+-{:-<40}", "", "", "");
+    let mut details = format!("{:<40} | {:<20} | {}\n", "ID", "Name", "URL");
+    details.push_str(&format!("{:-<40}-+-{:-<20}-+-{:-<40}\n", "", "", ""));
     
     for feed in feeds {
-        println!("{:<40} | {:<20} | {}", feed.id, feed.name, feed.url);
+        details.push_str(&format!("{:<40} | {:<20} | {}\n", feed.id, feed.name, feed.url));
     }
     
-    Ok(())
+    Ok(CommandResult {
+        success: true,
+        message: "Feeds listed successfully".to_string(),
+        details: Some(details),
+    })
 }
 
-pub async fn feeds_add() -> Result<()> {
+pub async fn feeds_add() -> Result<CommandResult> {
     let mut name = String::new();
     let mut url = String::new();
     let mut priority = String::new();
     let mut category = String::new();
 
+    // Since this is interactive via stdin, we'll leave prints here but it shouldn't be called from TUI.
+    // The TUI has its own popup logic.
     print!("Enter Feed Name: ");
     io::stdout().flush()?;
     io::stdin().read_line(&mut name)?;
@@ -181,15 +215,13 @@ pub async fn feeds_add() -> Result<()> {
         .open(&config_path)?;
     
     file.write_all(new_feed_entry.as_bytes())?;
-    println!("Feed added to {:?}", config_path);
 
     // Call sync to update database
-    feeds_sync().await?;
-    Ok(())
+    let _ = feeds_sync().await?;
+    Ok(CommandResult::success("Feed added successfully"))
 }
 
-pub async fn feeds_sync() -> Result<()> {
-    println!("Syncing feeds from config to database...");
+pub async fn feeds_sync() -> Result<CommandResult> {
     let config_path = get_config_path();
     let feeds_config = LoadFeeds::execute(config_path)?;
     
@@ -205,61 +237,72 @@ pub async fn feeds_sync() -> Result<()> {
         }
     }
     
-    println!("Sync complete. Added {} new feeds.", added);
-    Ok(())
+    Ok(CommandResult::success(format!("Sync complete. Added {} new feeds.", added)))
 }
 
-pub async fn items_command(search: Option<String>, limit: usize) -> Result<()> {
+pub async fn items_command(search: Option<String>, limit: usize) -> Result<CommandResult> {
     let db = Repository::new(get_db_path())?;
     let search = search.as_deref();
     let items = db.get_items(Some(limit), None, search)?;
     if items.is_empty() {
-        println!("No items found.");
-        return Ok(());
+        return Ok(CommandResult::error("No items found."));
     }
     
+    let mut details = String::new();
     for item in items {
-        println!("- {} [{}]", item.title, item.org.unwrap_or_else(|| "Unknown".to_string()));
-        println!("  {}", item.link);
-        println!();
+        details.push_str(&format!("- {} [{}]\n", item.title, item.org.unwrap_or_else(|| "Unknown".to_string())));
+        details.push_str(&format!("  {}\n\n", item.link));
     }
     
-    Ok(())
+    Ok(CommandResult {
+        success: true,
+        message: "Items retrieved.".to_string(),
+        details: Some(details),
+    })
 }
 
-pub async fn status_command() -> Result<()> {
-    println!("System Data Dir: {:?}", get_data_dir());
+pub async fn status_command() -> Result<CommandResult> {
+    let mut details = format!("System Data Dir: {:?}\n", get_data_dir());
     let db = Repository::new(get_db_path());
     match db {
         Ok(db) => {
             match db.get_all_feeds() {
-                Ok(feeds) => println!("DB Feeds: {}", feeds.len()),
-                Err(err) => println!("Unable to read feeds: {}", err),
+                Ok(feeds) => details.push_str(&format!("DB Feeds: {}\n", feeds.len())),
+                Err(err) => details.push_str(&format!("Unable to read feeds: {}\n", err)),
             }
 
             match db.get_items(None, None, None) {
-                Ok(items) => println!("DB Items: {}", items.len()),
-                Err(err) => println!("Unable to read items: {}", err),
+                Ok(items) => details.push_str(&format!("DB Items: {}\n", items.len())),
+                Err(err) => details.push_str(&format!("Unable to read items: {}\n", err)),
             }
         }
         Err(_) => {
-            println!("Database not initialized.");
+            details.push_str("Database not initialized.\n");
         }
     }
-    Ok(())
+    Ok(CommandResult {
+        success: true,
+        message: "Status check complete.".to_string(),
+        details: Some(details),
+    })
 }
 
-pub async fn cleanup_command() -> Result<()> {
-    println!("Cleaning up old items...");
+pub async fn cleanup_command() -> Result<CommandResult> {
     let db = Repository::new(get_db_path())?;
     db.delete_old_items(60)?;
-    println!("Cleanup complete.");
-    Ok(())
+    Ok(CommandResult::success("Cleanup complete. Deleted items older than 60 days."))
 }
 
-pub async fn config_command() -> Result<()> {
-    println!("Data Directory: {:?}", get_data_dir());
-    println!("Config File: {:?}", get_config_path());
-    println!("Database File: {:?}", get_db_path());
-    Ok(())
+pub async fn config_command() -> Result<CommandResult> {
+    let details = format!(
+        "Data Directory: {:?}\nConfig File: {:?}\nDatabase File: {:?}",
+        get_data_dir(),
+        get_config_path(),
+        get_db_path()
+    );
+    Ok(CommandResult {
+        success: true,
+        message: "Config paths loaded.".to_string(),
+        details: Some(details),
+    })
 }

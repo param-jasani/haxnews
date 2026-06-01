@@ -6,6 +6,9 @@ use anyhow::Result;
 pub fn handle_events(app: &mut App) -> Result<()> {
     if event::poll(std::time::Duration::from_millis(50))? {
         if let Event::Key(key) = event::read()? {
+            if key.kind != crossterm::event::KeyEventKind::Press {
+                return Ok(());
+            }
             if let PopupState::PauseFeedInput { ref mut input } = app.popup {
                 match key.code {
                     KeyCode::Esc => {
@@ -148,6 +151,12 @@ fn handle_news_keys(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Down | KeyCode::Char('j') => app.next_item(),
         KeyCode::Up | KeyCode::Char('k') => app.prev_item(),
+        KeyCode::PageDown => {
+            app.article_scroll_offset = app.article_scroll_offset.saturating_add(3);
+        }
+        KeyCode::PageUp => {
+            app.article_scroll_offset = app.article_scroll_offset.saturating_sub(3);
+        }
         KeyCode::Char('s') => app.current_screen = Screen::Search,
         _ => {}
     }
@@ -196,6 +205,7 @@ fn handle_feeds_keys(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Down | KeyCode::Char('j') => {
             app.selected_feed = (app.selected_feed + 1) % app.feeds.len();
+            app.feeds_list_state.select(Some(app.selected_feed));
         }
         KeyCode::Up | KeyCode::Char('k') => {
             app.selected_feed = if app.selected_feed == 0 {
@@ -203,6 +213,7 @@ fn handle_feeds_keys(app: &mut App, key: KeyEvent) {
             } else {
                 app.selected_feed - 1
             };
+            app.feeds_list_state.select(Some(app.selected_feed));
         }
         KeyCode::Char('p') => {
             app.popup = PopupState::PauseFeedInput { input: String::from("60") };
@@ -242,6 +253,7 @@ fn handle_feeds_keys(app: &mut App, key: KeyEvent) {
                     Ok(true) => {
                         app.feeds.remove(app.selected_feed);
                         app.selected_feed = app.selected_feed.saturating_sub(1);
+                        app.feeds_list_state.select(Some(app.selected_feed));
                         app.set_status("Feed removed.");
                     }
                     Ok(false) => app.set_error("Feed not found.".to_string()),

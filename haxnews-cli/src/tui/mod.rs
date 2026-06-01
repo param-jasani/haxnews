@@ -7,7 +7,7 @@ pub use handler::handle_events;
 
 use anyhow::Result;
 use crossterm::{
-    event::DisableMouseCapture,
+    event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -15,13 +15,27 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use std::io;
 use crate::tui::ui::draw;
+use std::panic;
+
+pub fn restore_terminal() -> Result<()> {
+    disable_raw_mode()?;
+    execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
+    Ok(())
+}
 
 pub async fn run_tui() -> Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, DisableMouseCapture)?;
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
+
+    let original_hook = panic::take_hook();
+    panic::set_hook(Box::new(move |panic_info| {
+        let _ = restore_terminal();
+        original_hook(panic_info);
+    }));
+
 
     // Initialize image picker (query terminal for graphics capability and font size)
     let mut picker = match ratatui_image::picker::Picker::from_query_stdio() {
@@ -32,12 +46,7 @@ pub async fn run_tui() -> Result<()> {
     let mut app = App::new();
     let res = run_app(&mut terminal, &mut app, &mut picker).await;
 
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
+    let _ = restore_terminal();
     terminal.show_cursor()?;
 
     if let Err(err) = res {
@@ -55,6 +64,8 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, app
                 app.current_image = Some(picker.new_resize_protocol(dyn_img));
             }
         }
+
+
 
         terminal.draw(|f| {
             draw(f, app);
